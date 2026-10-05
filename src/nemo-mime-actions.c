@@ -36,6 +36,8 @@
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <libxapp/xapp-favorites.h>
 
 #include <libnemo-private/nemo-file-attributes.h>
@@ -785,6 +787,94 @@ nemo_mime_file_is_image (NemoFile *file) {
 	return nemo_file_is_mime_type(file, "image/*");
 }
 
+static gboolean
+nemo_mime_file_is_text_script (NemoFile *file)
+{
+	return nemo_file_contains_text (file) &&
+	       nemo_file_is_mime_type (file, "application/x-shellscript");
+}
+
+/* Interpreter prefix taken from the script's shebang line, or /bin/sh
+ * when there is no (usable) one.
+ */
+static gchar *
+get_shebang_command_prefix (const gchar *path)
+{
+	gchar buffer[256];
+	gchar **argv = NULL;
+	gint argc = 0;
+	gssize bytes;
+	guint i;
+	gint fd;
+
+	fd = open (path, O_RDONLY | O_CLOEXEC);
+	bytes = (fd >= 0) ? read (fd, buffer, sizeof (buffer) - 1) : -1;
+	if (fd >= 0) {
+		close (fd);
+	}
+
+	if (bytes > 2 && buffer[0] == '#' && buffer[1] == '!') {
+		gchar *newline;
+
+		buffer[bytes] = '\0';
+		newline = strchr (buffer, '\n');
+		if (newline != NULL) {
+			*newline = '\0';
+		}
+
+		if (g_shell_parse_argv (buffer + 2, &argc, &argv, NULL) && argc > 0) {
+			GString *builder;
+
+			builder = g_string_new (NULL);
+			for (i = 0; i < (guint) argc; i++) {
+				gchar *token = g_shell_quote (argv[i]);
+
+				if (i > 0) {
+					g_string_append_c (builder, ' ');
+				}
+				g_string_append (builder, token);
+				g_free (token);
+			}
+			g_strfreev (argv);
+			return g_string_free (builder, FALSE);
+		}
+		g_strfreev (argv);
+	}
+
+	return g_strdup ("/bin/sh");
+}
+
+/* Command line used when activating a text script.  Files the user can
+ * execute are launched directly, like before.  Files without the
+ * executable bit would fail with EACCES, so they are handed to the
+ * interpreter from their shebang line instead.
+ */
+static gchar *
+get_script_run_command (NemoFile *file, const gchar *path)
+{
+	gchar *quoted_path;
+	gchar *prefix;
+	gchar *command;
+
+	if (path == NULL) {
+		return NULL;
+	}
+
+	quoted_path = g_shell_quote (path);
+
+	if (nemo_file_can_execute (file)) {
+		return quoted_path;
+	}
+
+	prefix = get_shebang_command_prefix (path);
+	command = g_strconcat (prefix, " ", quoted_path, NULL);
+
+	g_free (prefix);
+	g_free (quoted_path);
+
+	return command;
+}
+
 static ActivationAction
 get_activation_action (NemoFile *file, gboolean is_desktop)
 {
@@ -813,6 +903,11 @@ get_activation_action (NemoFile *file, gboolean is_desktop)
 			action = get_default_executable_text_file_action ();
 		}
 		g_free (executable_path);
+	} else if (nemo_mime_file_is_text_script (file)) {
+		/* Shell scripts get the run/display question even when they
+		 * lack the executable bit.
+		 */
+		action = get_default_executable_text_file_action ();
 	}
 
 	if (action == ACTIVATION_ACTION_DO_NOTHING) {
@@ -1638,7 +1733,7 @@ activate_files (ActivateParameters *parameters)
 
 		uri = nemo_file_get_activation_uri (file);
 		executable_path = g_filename_from_uri (uri, NULL, NULL);
-		quoted_path = g_shell_quote (executable_path);
+		quoted_path = get_script_run_command (file, executable_path);
 
 		DEBUG ("Launching file path %s", quoted_path);
 
@@ -1655,7 +1750,7 @@ activate_files (ActivateParameters *parameters)
 
 		uri = nemo_file_get_activation_uri (file);
 		executable_path = g_filename_from_uri (uri, NULL, NULL);
-		quoted_path = g_shell_quote (executable_path);
+		quoted_path = get_script_run_command (file, executable_path);
 
 		DEBUG ("Launching in terminal file quoted path %s", quoted_path);
 
