@@ -80,6 +80,7 @@
 #define NEMO_ACTION_CUT "Cut"
 #define NEMO_ACTION_LOCATION_CUT "LocationCut"
 #define NEMO_ACTION_COPY "Copy"
+#define NEMO_ACTION_COPY_PATH "CopyPath"
 #define NEMO_ACTION_LOCATION_COPY "LocationCopy"
 #define NEMO_ACTION_PASTE "Paste"
 #define NEMO_ACTION_PASTE_FILES_INTO "Paste Files Into"

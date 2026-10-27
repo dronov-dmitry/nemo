@@ -1002,6 +1002,21 @@ fm_tree_view_copy_cb (GtkAction *action,
 }
 
 static void
+fm_tree_view_copy_path_cb (GtkAction *action,
+		      FMTreeView *view)
+{
+	GList *files;
+
+	if (view->details->popup_file == NULL) {
+		return;
+	}
+
+	files = g_list_prepend (NULL, view->details->popup_file);
+	nemo_clipboard_copy_paths (GTK_WIDGET (view->details->tree_widget), files);
+	g_list_free (files);
+}
+
+static void
 paste_clipboard_data (FMTreeView *view,
 		      GtkSelectionData *selection_data,
 		      char *destination_uri)
@@ -1354,6 +1369,7 @@ static const GtkActionEntry tree_sidebar_menu_entries[] = {
     { NEMO_ACTION_NEW_FOLDER,              NULL,                          N_("Create New _Folder"),   NULL, NULL, G_CALLBACK (fm_tree_view_create_folder_cb)      },
     { NEMO_ACTION_CUT,                     "xsi-edit-cut-symbolic",           N_("Cu_t"),                 NULL, NULL, G_CALLBACK (fm_tree_view_cut_cb)                },
     { NEMO_ACTION_COPY,                    "xsi-edit-copy-symbolic",          N_("_Copy"),                NULL, NULL, G_CALLBACK (fm_tree_view_copy_cb)               },
+    { NEMO_ACTION_COPY_PATH,               NULL,                          N_("Copy path"),                NULL, NULL, G_CALLBACK (fm_tree_view_copy_path_cb)          },
     { NEMO_ACTION_PASTE,                   "xsi-edit-paste-symbolic",         N_("_Paste Into Folder"),   NULL, NULL, G_CALLBACK (fm_tree_view_paste_cb)              },
     { NEMO_ACTION_PIN_FILE,                "xsi-pin-symbolic",           N_("P_in"),                 NULL, NULL, G_CALLBACK (fm_tree_view_pin_unpin_cb)          },
     { NEMO_ACTION_UNPIN_FILE,              "xsi-unpin-symbolic",         N_("Unp_in"),               NULL, NULL, G_CALLBACK (fm_tree_view_pin_unpin_cb)          },

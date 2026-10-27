@@ -46,6 +46,8 @@ void nemo_clipboard_clear_if_colliding_uris    (GtkWidget          *widget,
 						    const GList        *item_uris,
 						    GdkAtom             copied_files_atom);
 GtkClipboard* nemo_clipboard_get                (GtkWidget          *widget);
+void nemo_clipboard_copy_paths                  (GtkWidget          *widget,
+                                                 GList              *files);
 GList* nemo_clipboard_get_uri_list_from_selection_data
 						   (GtkSelectionData   *selection_data,
 						    gboolean           *cut,

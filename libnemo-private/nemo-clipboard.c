@@ -30,6 +30,7 @@
 #include <config.h>
 #include "nemo-clipboard.h"
 #include "nemo-file-utilities.h"
+#include "nemo-file.h"
 
 #include <glib/gi18n.h>
 #include <gtk/gtk.h>
@@ -606,6 +607,54 @@ nemo_clipboard_get (GtkWidget *widget)
 {
 	return gtk_clipboard_get_for_display (gtk_widget_get_display (GTK_WIDGET (widget)),
 					      GDK_SELECTION_CLIPBOARD);
+}
+
+/* Put the locations of the given files on the clipboard as plain text, one
+ * entry per line.  Items without a local path (remote locations, the Recent
+ * list, mounted volumes seen through a different backend, ...) fall back to
+ * their uri, so there is always something usable to paste. */
+void
+nemo_clipboard_copy_paths (GtkWidget *widget,
+			   GList     *files)
+{
+	GString *paths;
+	GList *l;
+
+	paths = g_string_new (NULL);
+
+	for (l = files; l != NULL; l = l->next) {
+		NemoFile *file;
+		char *path;
+
+		if (l->data == NULL) {
+			continue;
+		}
+
+		file = NEMO_FILE (l->data);
+		path = nemo_file_get_path (file);
+
+		if (path == NULL) {
+			path = nemo_file_get_uri (file);
+		}
+
+		if (path == NULL) {
+			continue;
+		}
+
+		if (paths->len > 0) {
+			g_string_append_c (paths, '\n');
+		}
+
+		g_string_append (paths, path);
+		g_free (path);
+	}
+
+	if (paths->len > 0) {
+		gtk_clipboard_set_text (nemo_clipboard_get (widget),
+					paths->str, -1);
+	}
+
+	g_string_free (paths, TRUE);
 }
 
 void

@@ -8,6 +8,7 @@
     <separator name="CopyItemsSeparator"/>
     <menuitem name="Cut" action="Cut"/>
     <menuitem name="Copy" action="Copy"/>
+    <menuitem name="CopyPath" action="CopyPath"/>
     <menuitem name="Paste" action="Paste"/>
     <separator name="PinSeparator"/>
     <menuitem name="Pin" action="Pin File"/>
